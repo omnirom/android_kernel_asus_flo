@@ -3949,6 +3949,12 @@ static void a3xx_protect_init(struct kgsl_device *device)
 	kgsl_regwrite(device, A3XX_CP_PROTECT_REG_8, 0x620007E0);
 	kgsl_regwrite(device, A3XX_CP_PROTECT_REG_9, 0x61001178);
 	kgsl_regwrite(device, A3XX_CP_PROTECT_REG_A, 0x64001180);
+	adreno_set_protected_registers(device, &index, 0x1C0, 5);
+	adreno_set_protected_registers(device, &index, 0x1EC, 1);
+	adreno_set_protected_registers(device, &index, 0x1F6, 1);
+	adreno_set_protected_registers(device, &index, 0x1F8, 2);
+	adreno_set_protected_registers(device, &index, 0x45E, 2);
+	adreno_set_protected_registers(device, &index, 0x460, 4);
 
 	/* RB registers */
 	kgsl_regwrite(device, A3XX_CP_PROTECT_REG_B, 0x60003300);

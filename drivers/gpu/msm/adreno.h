@@ -706,6 +706,11 @@ static inline int adreno_add_read_cmds(struct kgsl_device *device,
 	*cmds++ = val;
 	*cmds++ = 0xFFFFFFFF;
 	*cmds++ = 0xFFFFFFFF;
+
+	/* WAIT_REG_MEM turns back on protected mode - push it off */
+	*cmds++ = cp_type3_packet(CP_SET_PROTECTED_MODE, 1);
+	*cmds++ = 0;
+
 	cmds += __adreno_add_idle_indirect_cmds(cmds, nop_gpuaddr);
 	return cmds - start;
 }
@@ -729,6 +734,33 @@ static inline int adreno_add_idle_cmds(struct adreno_device *adreno_dev,
 		*cmds++ = cp_type3_packet(CP_WAIT_FOR_ME, 1);
 		*cmds++ = 0x00000000;
 	}
+
+	return cmds - start;
+}
+
+/*
+ * adreno_wait_reg_mem() - Add a CP_WAIT_REG_MEM command
+ * @cmds:	Pointer to memory where commands are to be added
+ * @addr:	Regiater address to poll for
+ * @val:	Value to poll for
+ * @mask:	The value against which register value is masked
+ * @interval:	wait interval
+ */
+static inline int adreno_wait_reg_mem(unsigned int *cmds, unsigned int addr,
+				unsigned int val, unsigned int mask,
+				unsigned int interval)
+{
+	unsigned int *start = cmds;
+	*cmds++ = cp_type3_packet(CP_WAIT_REG_MEM, 5);
+	*cmds++ = 0x3; /* Function = Equals */
+	*cmds++ = addr; /* Poll address */
+	*cmds++ = val; /* ref val */
+	*cmds++ = mask;
+	*cmds++ = interval;
+
+	/* WAIT_REG_MEM turns back on protected mode - push it off */
+	*cmds++ = cp_type3_packet(CP_SET_PROTECTED_MODE, 1);
+	*cmds++ = 0;
 
 	return cmds - start;
 }
