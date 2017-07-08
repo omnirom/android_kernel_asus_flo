@@ -66,12 +66,17 @@ static unsigned char *fbram;
 static unsigned char *fbram_phys;
 static int fbram_size;
 static boolean bf_supported;
+
+#if !defined(CONFIG_MACH_APQ8064_FLO) && !defined(CONFIG_MACH_APQ8064_DEB)
+unsigned long backlight_duration = 0;
+#else
 /*
  * Set backlight on resume after 50 ms after first
  * pan display on the panel. This is to avoid panel specific
  * transients during resume.
  */
 unsigned long backlight_duration = (HZ/20);
+#endif
 static struct platform_device *pdev_list[MSM_FB_MAX_DEV_LIST];
 static int pdev_list_cnt;
 
@@ -1268,8 +1273,13 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	var->grayscale = 0,	/* No graylevels */
 	var->nonstd = 0,	/* standard pixel format */
 	var->activate = FB_ACTIVATE_VBL,	/* activate it at vsync */
+#if defined(CONFIG_FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT)
+	var->height = 102,      /* height of picture in mm */
+	var->width = 61,        /* width of picture in mm */
+#else
 	var->height = -1,	/* height of picture in mm */
 	var->width = -1,	/* width of picture in mm */
+#endif
 	var->accel_flags = 0,	/* acceleration flags */
 	var->sync = 0,	/* see FB_SYNC_* */
 	var->rotate = 0,	/* angle we rotate counter clockwise */
@@ -1604,6 +1614,10 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	    ("FrameBuffer[%d] %dx%d size=%d bytes is registered successfully!\n",
 	     mfd->index, fbi->var.xres, fbi->var.yres, fbi->fix.smem_len);
 
+#ifdef CONFIG_UPDATE_LCDC_LUT
+	if (msm_fb_pdata->update_lcdc_lut)
+		msm_fb_pdata->update_lcdc_lut();
+#endif
 #ifdef CONFIG_FB_MSM_LOGO
 	/* Flip buffer */
 	if (!load_565rle_image(INIT_IMAGE_FILE, bf_supported))
