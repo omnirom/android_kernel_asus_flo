@@ -27,7 +27,6 @@
 #include <net/tcp_memcontrol.h>
 
 static int zero;
-static int one = 1;
 static int tcp_retr1_max = 255;
 static int ip_local_port_range_min[] = { 1, 1 };
 static int ip_local_port_range_max[] = { 65535, 65535 };
@@ -120,21 +119,6 @@ static int ipv4_ping_group_range(ctl_table *table, int write,
 
 	if (write && ret == 0)
 		set_ping_group_range(table, range);
-
-	return ret;
-}
-
-/* Validate changes from /proc interface. */
-static int proc_tcp_default_init_rwnd(ctl_table *ctl, int write,
-				      void __user *buffer,
-				      size_t *lenp, loff_t *ppos)
-{
-	int old_value = *(int *)ctl->data;
-	int ret = proc_dointvec(ctl, write, buffer, lenp, ppos);
-	int new_value = *(int *)ctl->data;
-
-	if (write && ret == 0 && (new_value < 3 || new_value > 100))
-		*(int *)ctl->data = old_value;
 
 	return ret;
 }
@@ -502,16 +486,14 @@ static struct ctl_table ipv4_table[] = {
 		.data		= &sysctl_tcp_wmem,
 		.maxlen		= sizeof(sysctl_tcp_wmem),
 		.mode		= 0644,
-		.proc_handler	= proc_dointvec_minmax,
-		.extra1		= &one,
+		.proc_handler	= proc_dointvec
 	},
 	{
 		.procname	= "tcp_rmem",
 		.data		= &sysctl_tcp_rmem,
 		.maxlen		= sizeof(sysctl_tcp_rmem),
 		.mode		= 0644,
-		.proc_handler	= proc_dointvec_minmax,
-		.extra1		= &one,
+		.proc_handler	= proc_dointvec
 	},
 	{
 		.procname	= "tcp_app_win",
@@ -698,19 +680,12 @@ static struct ctl_table ipv4_table[] = {
 		.mode           = 0644,
 		.proc_handler   = proc_dointvec
 	},
-	{
+        {
 		.procname       = "tcp_thin_dupack",
 		.data           = &sysctl_tcp_thin_dupack,
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
 		.proc_handler   = proc_dointvec
-	},
-	{
-		.procname       = "tcp_default_init_rwnd",
-		.data           = &sysctl_tcp_default_init_rwnd,
-		.maxlen         = sizeof(int),
-		.mode           = 0644,
-		.proc_handler   = proc_tcp_default_init_rwnd
 	},
 	{
 		.procname	= "udp_mem",
@@ -725,7 +700,7 @@ static struct ctl_table ipv4_table[] = {
 		.maxlen		= sizeof(sysctl_udp_rmem_min),
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec_minmax,
-		.extra1		= &one
+		.extra1		= &zero
 	},
 	{
 		.procname	= "udp_wmem_min",
@@ -733,7 +708,7 @@ static struct ctl_table ipv4_table[] = {
 		.maxlen		= sizeof(sysctl_udp_wmem_min),
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec_minmax,
-		.extra1		= &one
+		.extra1		= &zero
 	},
 	{ }
 };
@@ -800,20 +775,6 @@ static struct ctl_table ipv4_net_table[] = {
 		.maxlen		= sizeof(init_net.ipv4.sysctl_tcp_mem),
 		.mode		= 0644,
 		.proc_handler	= ipv4_tcp_mem,
-	},
-	{
-		.procname	= "fwmark_reflect",
-		.data		= &init_net.ipv4.sysctl_fwmark_reflect,
-		.maxlen		= sizeof(int),
-		.mode		= 0644,
-		.proc_handler	= proc_dointvec,
-	},
-	{
-		.procname	= "tcp_fwmark_accept",
-		.data		= &init_net.ipv4.sysctl_tcp_fwmark_accept,
-		.maxlen		= sizeof(int),
-		.mode		= 0644,
-		.proc_handler	= proc_dointvec,
 	},
 	{ }
 };
