@@ -99,7 +99,7 @@
 #define MSM_CONTIG_MEM_SIZE  0x65000
 #ifdef CONFIG_MSM_IOMMU
 
-#define MSM_ION_MM_SIZE		0x3800000
+#define MSM_ION_MM_SIZE		0x5C00000
 #define MSM_ION_SF_SIZE		0
 #define MSM_ION_QSECOM_SIZE	0x780000 /* (7.5MB) */
 #define MSM_ION_HEAP_NUM	7
@@ -298,7 +298,7 @@ static int apq8064_paddr_to_memtype(unsigned int paddr)
 	return MEMTYPE_EBI1;
 }
 
-#define FMEM_ENABLED 1
+#define FMEM_ENABLED 0
 
 #ifdef CONFIG_ION_MSM
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
@@ -695,6 +695,52 @@ static int __init ext_display_setup(char *param)
 }
 early_param("ext_display", ext_display_setup);
 
+static unsigned long limit_mem;
+
+static int __init limit_mem_setup(char *param)
+{
+	limit_mem = memparse(param, NULL);
+	return 0;
+}
+early_param("limit_mem", limit_mem_setup);
+
+static void __init limit_mem_reserve(void)
+{
+	unsigned long to_remove;
+	unsigned long reserved_mem;
+	unsigned long i;
+	phys_addr_t base;
+
+	if (!limit_mem)
+		return;
+
+	reserved_mem = ALIGN(memblock.reserved.total_size, PAGE_SIZE);
+
+	to_remove = memblock.memory.total_size - reserved_mem - limit_mem;
+
+	pr_info("Limiting memory from %lu KB to to %lu kB by removing %lu kB\n",
+			(memblock.memory.total_size - reserved_mem) / 1024,
+			limit_mem / 1024,
+			to_remove / 1024);
+
+	/* First find as many highmem pages as possible */
+	for (i = 0; i < to_remove; i += PAGE_SIZE) {
+		base = memblock_find_in_range(memblock.current_limit,
+				MEMBLOCK_ALLOC_ANYWHERE, PAGE_SIZE, PAGE_SIZE);
+		if (!base)
+			break;
+		memblock_remove(base, PAGE_SIZE);
+	}
+	/* Then find as many lowmem 1M sections as possible */
+	for (; i < to_remove; i += SECTION_SIZE) {
+		base = memblock_find_in_range(0, MEMBLOCK_ALLOC_ACCESSIBLE,
+				SECTION_SIZE, SECTION_SIZE);
+		if (!base)
+			break;
+		memblock_remove(base, SECTION_SIZE);
+	}
+}
+
 static void __init apq8064_reserve(void)
 {
 	msm_reserve();
@@ -712,6 +758,7 @@ static void __init apq8064_reserve(void)
 #endif
 	}
 	lge_reserve();
+	limit_mem_reserve();
 }
 
 static void __init place_movable_zone(void)
@@ -1051,10 +1098,16 @@ static struct platform_device msm_device_iris_fm __devinitdata = {
 /* qseecom bus scaling */
 static struct msm_bus_vectors qseecom_clks_init_vectors[] = {
 	{
-		.src = MSM_BUS_MASTER_SPS,
+		.src = MSM_BUS_MASTER_ADM_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ib = 0,
 		.ab = 0,
+		.ib = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_ADM_PORT1,
+		.dst = MSM_BUS_SLAVE_GSBI1_UART,
+		.ab = 0,
+		.ib = 0,
 	},
 	{
 		.src = MSM_BUS_MASTER_SPDM,
@@ -1066,10 +1119,16 @@ static struct msm_bus_vectors qseecom_clks_init_vectors[] = {
 
 static struct msm_bus_vectors qseecom_enable_dfab_vectors[] = {
 	{
-		.src = MSM_BUS_MASTER_SPS,
+		.src = MSM_BUS_MASTER_ADM_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ib = (492 * 8) * 1000000UL,
-		.ab = (492 * 8) *  100000UL,
+		.ab = 70000000UL,
+		.ib = 70000000UL,
+	},
+	{
+		.src = MSM_BUS_MASTER_ADM_PORT1,
+		.dst = MSM_BUS_SLAVE_GSBI1_UART,
+		.ab = 2480000000UL,
+		.ib = 2480000000UL,
 	},
 	{
 		.src = MSM_BUS_MASTER_SPDM,
@@ -1081,10 +1140,37 @@ static struct msm_bus_vectors qseecom_enable_dfab_vectors[] = {
 
 static struct msm_bus_vectors qseecom_enable_sfpb_vectors[] = {
 	{
-		.src = MSM_BUS_MASTER_SPS,
+		.src = MSM_BUS_MASTER_ADM_PORT0,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ib = 0,
 		.ab = 0,
+		.ib = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_ADM_PORT1,
+		.dst = MSM_BUS_SLAVE_GSBI1_UART,
+		.ab = 0,
+		.ib = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_SPDM,
+		.dst = MSM_BUS_SLAVE_SPDM,
+		.ib = (64 * 8) * 1000000UL,
+		.ab = (64 * 8) *  100000UL,
+	},
+};
+
+static struct msm_bus_vectors qseecom_enable_dfab_sfpb_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_ADM_PORT0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab = 70000000UL,
+		.ib = 70000000UL,
+	},
+	{
+		.src = MSM_BUS_MASTER_ADM_PORT1,
+		.dst = MSM_BUS_SLAVE_GSBI1_UART,
+		.ab = 2480000000UL,
+		.ib = 2480000000UL,
 	},
 	{
 		.src = MSM_BUS_MASTER_SPDM,
@@ -1101,11 +1187,15 @@ static struct msm_bus_paths qseecom_hw_bus_scale_usecases[] = {
 	},
 	{
 		ARRAY_SIZE(qseecom_enable_dfab_vectors),
-		qseecom_enable_sfpb_vectors,
+		qseecom_enable_dfab_vectors,
 	},
 	{
 		ARRAY_SIZE(qseecom_enable_sfpb_vectors),
 		qseecom_enable_sfpb_vectors,
+	},
+	{
+		ARRAY_SIZE(qseecom_enable_dfab_sfpb_vectors),
+		qseecom_enable_dfab_sfpb_vectors,
 	},
 };
 
@@ -1848,7 +1938,7 @@ static void __init apq8064_init_dsps(void)
 
 static void __init register_i2c_devices(void)
 {
-#ifdef CONFIG_MSMB_CAMERA
+#ifdef CONFIG_MSM_CAMERA
 	struct i2c_registry apq8064_camera_i2c_devices = {
 		I2C_FFA,
 		APQ_8064_GSBI4_QUP_I2C_BUS_ID,
@@ -1865,7 +1955,7 @@ static void __init register_i2c_devices(void)
 #endif
 
 
-#ifdef CONFIG_MSMB_CAMERA
+#ifdef CONFIG_MSM_CAMERA
 	i2c_register_board_info(apq8064_camera_i2c_devices.bus,
 		apq8064_camera_i2c_devices.info,
 		apq8064_camera_i2c_devices.len);
@@ -2009,7 +2099,7 @@ static void __init apq8064_mako_init(void)
 	apq8064_init_fb();
 	apq8064_init_gpu();
 	platform_add_devices(apq8064_footswitch, apq8064_num_footswitch);
-#ifdef CONFIG_MSMB_CAMERA
+#ifdef CONFIG_MSM_CAMERA
 	apq8064_init_cam();
 #endif
 	change_memory_power = &apq8064_change_memory_power;

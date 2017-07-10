@@ -1394,7 +1394,9 @@ struct sensor_cfg_data {
 		struct sensor_output_info_t output_info;
 		struct msm_eeprom_data_t eeprom_data;
 		struct csi_lane_params_t csi_lane_params;
+#ifndef CONFIG_MACH_APQ8064_MAKO
 		struct msm_calib_af sensor_otp_afcalib;
+#endif
 		/* QRD */
 		uint16_t antibanding;
 		uint8_t contrast;
@@ -1656,7 +1658,9 @@ struct msm_camsensor_info {
 	int mount_angle;
 	uint32_t max_width;
 	uint32_t max_height;
+#ifndef CONFIG_MACH_APQ8064_MAKO
 	char vendor_name[MAX_SENSOR_NAME];
+#endif
 };
 
 #define V4L2_SINGLE_PLANE	0
@@ -1921,6 +1925,30 @@ struct msm_ver_num_info {
 	uint32_t minor;
 	uint32_t rev;
 };
+
+#ifdef CONFIG_MSM_CAMERA
+struct msm_pp_crop {
+        uint32_t src_x;
+        uint32_t src_y;
+        uint32_t src_w;
+        uint32_t src_h;
+        uint32_t dst_x;
+        uint32_t dst_y;
+        uint32_t dst_w;
+        uint32_t dst_h;
+        uint8_t update_flag;
+};
+
+struct msm_mctl_pp_frame_cmd
+{
+        uint32_t cookie;
+        uint8_t vpe_output_action;
+        struct msm_pp_frame src_frame;
+        struct msm_pp_frame dest_frame;
+        struct msm_pp_crop crop;
+        int path;
+};
+#endif
 
 #define VIDIOC_MSM_CPP_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE, struct msm_camera_v4l2_ioctl_t)

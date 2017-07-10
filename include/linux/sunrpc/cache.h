@@ -228,6 +228,22 @@ static inline int get_int(char **bpp, int *anint)
 	return 0;
 }
 
+static inline int get_uint(char **bpp, unsigned int *anint)
+{
+	char buf[50];
+	int len = qword_get(bpp, buf, sizeof(buf));
+
+	if (len < 0)
+		return -EINVAL;
+	if (len == 0)
+		return -ENOENT;
+
+	if (kstrtouint(buf, 0, anint))
+		return -EINVAL;
+
+	return 0;
+}
+
 /*
  * timestamps kept in the cache are expressed in seconds
  * since boot.  This is the best for measuring differences in
@@ -249,7 +265,7 @@ static inline time_t convert_to_wallclock(time_t sinceboot)
 
 static inline time_t get_expiry(char **bpp)
 {
-	int rv;
+	int rv = 0;
 	struct timespec boot;
 
 	if (get_int(bpp, &rv))

@@ -4949,7 +4949,6 @@ fs_failed:
 	iounmap(axi_ctrl->share_ctrl->vfebase);
 	axi_ctrl->share_ctrl->vfebase = NULL;
 remap_failed:
-	disable_irq(axi_ctrl->vfeirq->start);
 mctl_failed:
 	return rc;
 }
@@ -6015,14 +6014,14 @@ static int __devinit vfe32_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, &vfe32_ctrl->subdev);
 
 	axi_ctrl->vfemem = platform_get_resource_byname(pdev,
-					IORESOURCE_MEM, "vfe32");
+					IORESOURCE_MEM, "vfe");
 	if (!axi_ctrl->vfemem) {
 		pr_err("%s: no mem resource?\n", __func__);
 		rc = -ENODEV;
 		goto vfe32_no_resource;
 	}
 	axi_ctrl->vfeirq = platform_get_resource_byname(pdev,
-					IORESOURCE_IRQ, "vfe32");
+					IORESOURCE_IRQ, "vfe");
 	if (!axi_ctrl->vfeirq) {
 		pr_err("%s: no irq resource?\n", __func__);
 		rc = -ENODEV;
